@@ -2,167 +2,179 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HOPE 文案视觉生图</title>
+    <title>HOPE AI 意境海报生成器</title>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
-        :root { --primary: #2E84C5; --bg: #f0f2f5; }
-        body { margin: 0; background: var(--bg); font-family: -apple-system, "Noto Sans SC", sans-serif; display: flex; height: 100vh; }
+        :root { --primary: #2E84C5; --black: #1a1a1a; }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { margin: 0; background: #f0f0f0; font-family: "PingFang SC", "Hiragino Sans GB", sans-serif; display: flex; height: 100vh; color: var(--black); }
 
-        /* 控制面板 */
-        .panel { width: 360px; background: white; padding: 30px; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; overflow-y: auto; }
-        h2 { margin-bottom: 25px; color: #333; font-size: 22px; border-left: 5px solid var(--primary); padding-left: 15px; }
-        .field { margin-bottom: 20px; }
-        label { display: block; font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold; }
-        textarea, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #246ba3; }
+        /* 左侧控制台 */
+        .sidebar { width: 360px; background: white; padding: 40px 30px; display: flex; flex-direction: column; box-shadow: 10px 0 30px rgba(0,0,0,0.05); z-index: 10; }
+        .logo { font-size: 14px; font-weight: 900; letter-spacing: 5px; color: var(--primary); margin-bottom: 40px; }
+        .group { margin-bottom: 25px; }
+        label { display: block; font-size: 11px; color: #999; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
+        textarea, input { width: 100%; border: 1px solid #eee; background: #f9f9f9; padding: 14px; border-radius: 8px; font-size: 14px; outline: none; transition: 0.3s; resize: none; }
+        textarea:focus { border-color: var(--primary); background: white; }
+        
+        .btn-gen { background: var(--black); color: white; border: none; padding: 18px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn-gen:hover { background: var(--primary); transform: translateY(-2px); }
 
-        /* 预览区 */
-        .preview-area { flex: 1; padding: 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; overflow-y: auto; }
-
-        /* 海报卡片样式 */
-        .poster-card { 
-            position: relative; 
-            width: 100%; 
-            aspect-ratio: 3/4; 
-            background: #222; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+        /* 右侧画布区 */
+        .stage { flex: 1; display: flex; align-items: center; justify-content: center; background: #e8e8e8; overflow: hidden; padding: 40px; }
+        
+        /* 海报本体 */
+        #poster {
+            width: 450px; height: 630px; background: white; position: relative;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* 实际海报导出区域 */
-        .poster-content {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            color: white;
-            box-sizing: border-box;
-            background-size: cover;
-            background-position: center;
-        }
+        /* 生成艺术底层 */
+        #artCanvas { position: absolute; inset: 0; z-index: 1; }
+        
+        /* 噪点层：增加纸张质感 */
+        .texture { position: absolute; inset: 0; z-index: 2; opacity: 0.15; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
-        /* 遮罩：让文字更清晰 */
-        .overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.7));
-            z-index: 1;
-        }
+        /* 文案排版层 */
+        .content { position: relative; z-index: 10; padding: 60px 50px; height: 100%; display: flex; flex-direction: column; }
+        .main-title { font-size: 38px; font-weight: 800; line-height: 1.3; color: #000; word-break: break-all; margin-top: 20px; }
+        .sub-title { font-size: 15px; line-height: 1.8; color: #444; margin-top: 30px; max-width: 80%; font-weight: 300; }
+        
+        .footer { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; }
+        .author-box { border-left: 2px solid var(--primary); padding-left: 15px; }
+        .author-name { font-size: 12px; font-weight: bold; letter-spacing: 2px; }
+        .stamp { font-family: serif; font-style: italic; font-size: 24px; opacity: 0.2; }
 
-        .text-layer {
-            position: relative;
-            z-index: 2;
-            padding: 40px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .title { font-size: 30px; font-weight: 800; line-height: 1.4; margin-bottom: 15px; }
-        .subtitle { font-size: 16px; opacity: 0.9; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 15px; }
-        .footer { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; }
-        .author { font-size: 12px; letter-spacing: 1px; opacity: 0.8; }
-
-        .dl-btn {
-            position: absolute; bottom: 15px; right: 15px; z-index: 10;
-            background: white; color: #333; border: none; padding: 6px 12px;
-            border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;
-        }
-
-        /* 布局变体 */
-        .layout-center { justify-content: center; text-align: center; }
-        .layout-bottom { justify-content: flex-end; }
+        .download-hint { position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(255,255,255,0.8); border: none; padding: 8px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; backdrop-filter: blur(5px); }
     </style>
 </head>
 <body>
 
-<div class="panel">
-    <h2>HOPE 海报生成</h2>
-    <div class="field">
-        <label>标题文字</label>
-        <textarea id="title" rows="3">教育的改变，往往从一个微小的行动开始</textarea>
+<div class="sidebar">
+    <div class="logo">HOPE DESIGN</div>
+    
+    <div class="group">
+        <label>文案标题</label>
+        <textarea id="inTitle" rows="3">保持热爱 奔赴山海</textarea>
     </div>
-    <div class="field">
-        <label>副标题 / 诗句</label>
-        <textarea id="subtitle" rows="2">每一个努力的瞬间，都值得被看见。</textarea>
+
+    <div class="group">
+        <label>感性副标</label>
+        <textarea id="inSub" rows="2">每一个努力的瞬间，都值得被看见。</textarea>
     </div>
-    <div class="field">
-        <label>情感关键词 (如: nature, art, sea)</label>
-        <input id="keyword" type="text" value="nature">
-    </div>
-    <div class="field">
+
+    <div class="group">
         <label>署名</label>
-        <input id="author" type="text" value="HOPE 学堂">
+        <input id="inAuthor" type="text" value="HOPE 学堂">
     </div>
-    <button onclick="renderAll()">点击生成生图海报</button>
+
+    <button class="btn-gen" onclick="render()">即刻生成视觉</button>
 </div>
 
-<div class="preview-area" id="container"></div>
+<div class="stage">
+    <div id="poster">
+        <button class="download-hint" onclick="save()">下载海报</button>
+        <canvas id="artCanvas"></canvas>
+        <div class="texture"></div>
+        <div class="content">
+            <div class="main-title" id="outTitle"></div>
+            <div class="sub-title" id="outSub"></div>
+            <div class="footer">
+                <div class="author-box">
+                    <div class="author-name" id="outAuthor"></div>
+                </div>
+                <div class="stamp">H.</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-    // 随机渐变色，防止图片加载失败
-    const gradients = [
-        'linear-gradient(135deg, #2E84C5 0%, #111 100%)',
-        'linear-gradient(135deg, #76B92E 0%, #111 100%)',
-        'linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)',
-        'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)'
+    // 调色盘
+    const palettes = [
+        ['#f3f4f6', '#2E84C5', '#111'], // 经典蓝
+        ['#ffffff', '#76B92E', '#222'], // 生机绿
+        ['#fff9e6', '#FFD100', '#333'], // 明亮黄
+        ['#fafafa', '#ff4d4d', '#000']  // 冲击红
     ];
 
-    function renderAll() {
-        const container = document.getElementById('container');
-        const title = document.getElementById('title').value;
-        const subtitle = document.getElementById('subtitle').value;
-        const author = document.getElementById('author').value;
-        const kw = document.getElementById('keyword').value;
+    function render() {
+        const title = document.getElementById('inTitle').value;
+        const sub = document.getElementById('inSub').value;
+        const author = document.getElementById('inAuthor').value;
 
-        container.innerHTML = '';
+        document.getElementById('outTitle').innerText = title;
+        document.getElementById('outSub').innerText = sub;
+        document.getElementById('outAuthor').innerText = author;
 
-        for (let i = 0; i < 4; i++) {
-            // 使用 Picsum 随机图，添加随机 seed 确保每张不同
-            const randomSeed = Math.floor(Math.random() * 1000);
-            const imgUrl = `https://picsum.photos/seed/${randomSeed}/800/1200`;
-            const randomGrad = gradients[i % gradients.length];
-            const layoutClass = i % 2 === 0 ? 'layout-center' : 'layout-bottom';
-
-            const card = document.createElement('div');
-            card.className = 'poster-card';
-            card.innerHTML = `
-                <div class="poster-content" id="p-${i}" style="background-image: ${randomGrad}, url('${imgUrl}')">
-                    <div class="overlay"></div>
-                    <div class="text-layer ${layoutClass}">
-                        <div class="title">${title}</div>
-                        <div class="subtitle">${subtitle}</div>
-                        <div class="footer">
-                            <div class="author">${author}</div>
-                        </div>
-                    </div>
-                </div>
-                <button class="dl-btn" onclick="download('p-${i}')">下载图片</button>
-            `;
-            container.appendChild(card);
-        }
+        drawAbstractArt(title);
     }
 
-    function download(id) {
-        const el = document.getElementById(id);
-        html2canvas(el, {
-            useCORS: true,
-            allowTaint: false,
-            scale: 2
-        }).then(canvas => {
+    // 根据文案内容生成唯一的抽象背景
+    function drawAbstractArt(seedText) {
+        const canvas = document.getElementById('artCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 450;
+        canvas.height = 630;
+
+        // 简单的哈希算法确定样式
+        let hash = 0;
+        for (let i = 0; i < seedText.length; i++) {
+            hash = seedText.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        const palette = palettes[Math.abs(hash) % palettes.length];
+        
+        // 填充底色
+        ctx.fillStyle = palette[0];
+        ctx.fillRect(0, 0, 450, 630);
+
+        // 绘制抽象几何 (根据文案产生的Hash决定位置)
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = palette[1];
+        
+        // 算法生成三个设计元素
+        for(let i=0; i<3; i++) {
+            const shift = (hash >> (i * 4)) & 0xFF;
+            ctx.beginPath();
+            if (shift % 3 === 0) {
+                // 绘制巨大的圆形切片
+                ctx.arc(shift, shift * 2, 200, 0, Math.PI * 2);
+            } else if (shift % 3 === 1) {
+                // 绘制倾斜的色块
+                ctx.rotate((shift * Math.PI) / 180);
+                ctx.rect(shift, 100, 300, 400);
+                ctx.resetTransform();
+            } else {
+                // 绘制极简线条
+                ctx.lineWidth = 40;
+                ctx.moveTo(0, shift * 2);
+                ctx.lineTo(450, shift * 1.5);
+                ctx.stroke();
+            }
+            ctx.fill();
+        }
+
+        // 增加白色柔光遮罩
+        const grad = ctx.createLinearGradient(0, 0, 0, 630);
+        grad.addColorStop(0, 'rgba(255,255,255,0.8)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.globalAlpha = 1;
+        ctx.fillRect(0, 0, 450, 630);
+    }
+
+    function save() {
+        const poster = document.getElementById('poster');
+        html2canvas(poster, { scale: 3 }).then(canvas => {
             const link = document.createElement('a');
-            link.download = 'HOPE-Poster.png';
-            link.href = canvas.toDataURL('image/png');
+            link.download = 'HOPE-AI-Design.png';
+            link.href = canvas.toDataURL();
             link.click();
         });
     }
 
-    // 初次自动执行
-    window.onload = renderAll;
+    window.onload = render;
 </script>
 
 </body>
