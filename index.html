@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>HOPE 海报生成器</title>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+background:#f3f5f7;
+}
+
+.container{
+display:flex;
+height:100vh;
+}
+
+.panel{
+width:420px;
+background:#fff;
+padding:30px;
+box-shadow:2px 0 10px rgba(0,0,0,0.05);
+overflow:auto;
+}
+
+.panel h1{
+margin-top:0;
+font-size:22px;
+}
+
+label{
+display:block;
+margin-top:14px;
+font-weight:600;
+}
+
+textarea,input,select{
+width:100%;
+margin-top:6px;
+padding:10px;
+font-size:14px;
+border:1px solid #ddd;
+border-radius:6px;
+box-sizing:border-box;
+}
+
+button{
+margin-top:18px;
+width:100%;
+padding:12px;
+font-size:16px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+.generate{
+background:#2E84C5;
+color:white;
+}
+
+.download{
+background:#76B92E;
+color:white;
+}
+
+.preview{
+flex:1;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#e6ebef;
+}
+
+.poster{
+background:white;
+position:relative;
+padding:80px;
+box-sizing:border-box;
+}
+
+/* HOPE元素 */
+
+.brand{
+position:absolute;
+top:40px;
+left:80px;
+display:flex;
+gap:10px;
+}
+
+.dot{
+width:12px;
+height:12px;
+border-radius:50%;
+}
+
+.blue{background:#2E84C5;}
+.yellow{background:#FFD100;}
+.green{background:#76B92E;}
+
+.part{
+font-size:72px;
+font-weight:700;
+color:#76B92E;
+}
+
+.partsub{
+font-size:18px;
+letter-spacing:2px;
+color:#2E84C5;
+}
+
+.title{
+font-size:44px;
+font-weight:700;
+line-height:1.35;
+margin-top:120px;
+}
+
+.subtitle{
+margin-top:20px;
+font-size:22px;
+color:#2E84C5;
+}
+
+.quote{
+margin-top:80px;
+font-size:30px;
+line-height:1.6;
+border-left:6px solid #FFD100;
+padding-left:18px;
+}
+
+.info{
+margin-top:50px;
+font-size:22px;
+line-height:1.6;
+}
+
+.footer{
+position:absolute;
+bottom:60px;
+left:80px;
+font-size:18px;
+color:#666;
+}
+
+.logo{
+position:absolute;
+bottom:60px;
+right:80px;
+font-weight:700;
+color:#2E84C5;
+}
+
+.qr{
+position:absolute;
+bottom:60px;
+right:160px;
+width:90px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="panel">
+
+<h1>HOPE 海报生成器</h1>
+
+<label>模板</label>
+<select id="template">
+<option value="quote">金句海报</option>
+<option value="cover">文章封面</option>
+<option value="event">活动海报</option>
+</select>
+
+<label>尺寸</label>
+<select id="size">
+<option value="1350">标准海报</option>
+<option value="1920">长图海报</option>
+<option value="500">公众号封面</option>
+</select>
+
+<label>标题</label>
+<textarea id="titleInput">冬日深耕，春日新声</textarea>
+
+<label>副标题 / 信息</label>
+<textarea id="subtitleInput">HOPE学堂实践观察</textarea>
+
+<label>金句 / 说明</label>
+<textarea id="quoteInput">教育的改变，往往从一个微小的行动开始。</textarea>
+
+<label>署名</label>
+<input id="authorInput" value="HOPE学堂">
+
+<label>二维码</label>
+<input type="file" id="qrInput">
+
+<button class="generate" onclick="generatePoster()">生成海报</button>
+
+<button class="download" onclick="downloadPoster()">下载PNG</button>
+
+</div>
+
+<div class="preview">
+
+<div class="poster" id="poster">
+
+<div class="brand">
+<div class="dot blue"></div>
+<div class="dot yellow"></div>
+<div class="dot green"></div>
+</div>
+
+<div id="content"></div>
+
+<img id="qr" class="qr" style="display:none">
+
+<div class="logo">HOPE</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+function generatePoster(){
+
+let template=document.getElementById("template").value
+let title=document.getElementById("titleInput").value
+let subtitle=document.getElementById("subtitleInput").value
+let quote=document.getElementById("quoteInput").value
+let author=document.getElementById("authorInput").value
+
+let html=""
+
+if(template==="quote"){
+
+html=`
+<div class="quote">${quote}</div>
+<div class="footer">—— ${author}</div>
+`
+
+}
+
+if(template==="cover"){
+
+html=`
+<div class="part">01</div>
+<div class="partsub">PART ONE</div>
+<div class="title">${title}</div>
+<div class="subtitle">${subtitle}</div>
+<div class="footer">${author}</div>
+`
+
+}
+
+if(template==="event"){
+
+html=`
+<div class="title">${title}</div>
+<div class="info">${subtitle}</div>
+<div class="quote">${quote}</div>
+<div class="footer">${author}</div>
+`
+
+}
+
+document.getElementById("content").innerHTML=html
+
+}
+
+document.getElementById("qrInput").onchange=function(e){
+
+let file=e.target.files[0]
+if(!file) return
+
+let reader=new FileReader()
+
+reader.onload=function(ev){
+
+let img=document.getElementById("qr")
+img.src=ev.target.result
+img.style.display="block"
+
+}
+
+reader.readAsDataURL(file)
+
+}
+
+function downloadPoster(){
+
+html2canvas(document.querySelector("#poster"),{scale:3})
+.then(canvas=>{
+
+let link=document.createElement("a")
+link.download="hope-poster.png"
+link.href=canvas.toDataURL()
+link.click()
+
+})
+
+}
+
+generatePoster()
+
+</script>
+
+</body>
+</html>
