@@ -2,179 +2,144 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>HOPE AI 意境海报生成器</title>
+    <title>HOPE AI 语义生图海报</title>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
-        :root { --primary: #2E84C5; --black: #1a1a1a; }
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { margin: 0; background: #f0f0f0; font-family: "PingFang SC", "Hiragino Sans GB", sans-serif; display: flex; height: 100vh; color: var(--black); }
+        :root { --primary: #2E84C5; }
+        body { margin: 0; background: #f4f7f6; font-family: "PingFang SC", sans-serif; display: flex; height: 100vh; }
 
-        /* 左侧控制台 */
-        .sidebar { width: 360px; background: white; padding: 40px 30px; display: flex; flex-direction: column; box-shadow: 10px 0 30px rgba(0,0,0,0.05); z-index: 10; }
-        .logo { font-size: 14px; font-weight: 900; letter-spacing: 5px; color: var(--primary); margin-bottom: 40px; }
-        .group { margin-bottom: 25px; }
-        label { display: block; font-size: 11px; color: #999; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
-        textarea, input { width: 100%; border: 1px solid #eee; background: #f9f9f9; padding: 14px; border-radius: 8px; font-size: 14px; outline: none; transition: 0.3s; resize: none; }
-        textarea:focus { border-color: var(--primary); background: white; }
+        /* 左侧控制栏 */
+        .sidebar { width: 380px; background: white; padding: 40px; box-shadow: 2px 0 20px rgba(0,0,0,0.05); z-index: 10; display: flex; flex-direction: column; }
+        .logo { font-weight: 900; letter-spacing: 4px; color: var(--primary); margin-bottom: 30px; }
+        .group { margin-bottom: 20px; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 8px; font-weight: bold; }
+        textarea, input { width: 100%; border: 1px solid #eee; background: #f9f9f9; padding: 12px; border-radius: 8px; font-size: 14px; outline: none; }
         
-        .btn-gen { background: var(--black); color: white; border: none; padding: 18px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
-        .btn-gen:hover { background: var(--primary); transform: translateY(-2px); }
+        .btn-gen { background: #000; color: white; border: none; padding: 16px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-gen:hover { background: var(--primary); }
 
-        /* 右侧画布区 */
-        .stage { flex: 1; display: flex; align-items: center; justify-content: center; background: #e8e8e8; overflow: hidden; padding: 40px; }
+        /* 右侧展示区 */
+        .main { flex: 1; display: flex; align-items: center; justify-content: center; background: #ddd; perspective: 1000px; }
         
-        /* 海报本体 */
+        /* 海报设计 */
         #poster {
-            width: 450px; height: 630px; background: white; position: relative;
-            box-shadow: 0 50px 100px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden;
+            width: 400px; height: 560px; background: white; position: relative;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.2); overflow: hidden;
+            transition: transform 0.5s;
         }
 
-        /* 生成艺术底层 */
-        #artCanvas { position: absolute; inset: 0; z-index: 1; }
-        
-        /* 噪点层：增加纸张质感 */
-        .texture { position: absolute; inset: 0; z-index: 2; opacity: 0.15; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+        /* 真实的图片背景层 */
+        .img-bg {
+            position: absolute; inset: 0;
+            background-size: cover; background-position: center;
+            filter: brightness(0.8) contrast(1.1); /* 自动色彩增强 */
+            transition: 1s ease-in-out;
+            z-index: 1;
+        }
 
-        /* 文案排版层 */
-        .content { position: relative; z-index: 10; padding: 60px 50px; height: 100%; display: flex; flex-direction: column; }
-        .main-title { font-size: 38px; font-weight: 800; line-height: 1.3; color: #000; word-break: break-all; margin-top: 20px; }
-        .sub-title { font-size: 15px; line-height: 1.8; color: #444; margin-top: 30px; max-width: 80%; font-weight: 300; }
-        
-        .footer { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; }
-        .author-box { border-left: 2px solid var(--primary); padding-left: 15px; }
-        .author-name { font-size: 12px; font-weight: bold; letter-spacing: 2px; }
-        .stamp { font-family: serif; font-style: italic; font-size: 24px; opacity: 0.2; }
+        /* 艺术遮罩：提升人工设计感 */
+        .overlay {
+            position: absolute; inset: 0; z-index: 2;
+            background: linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 60%);
+        }
 
-        .download-hint { position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(255,255,255,0.8); border: none; padding: 8px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; backdrop-filter: blur(5px); }
+        .content { position: relative; z-index: 10; padding: 45px; height: 100%; display: flex; flex-direction: column; color: white; }
+        
+        /* 这里的排版采用了现代杂志感设计 */
+        .title { font-size: 34px; font-weight: 800; line-height: 1.3; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .line { width: 40px; height: 4px; background: var(--primary); margin: 25px 0; }
+        .sub { font-size: 16px; font-weight: 300; opacity: 0.9; line-height: 1.6; }
+        
+        .footer { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; }
+        .author { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+        .brand-icon { width: 30px; height: 30px; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+
+        .save-btn { position: absolute; top: 20px; right: 20px; z-index: 20; background: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div class="logo">HOPE DESIGN</div>
+    <div class="logo">HOPE AI DESIGN</div>
     
     <div class="group">
-        <label>文案标题</label>
-        <textarea id="inTitle" rows="3">保持热爱 奔赴山海</textarea>
+        <label>核心文案 (标题)</label>
+        <textarea id="inTitle" rows="3">在星辰大海中寻找答案</textarea>
     </div>
 
     <div class="group">
-        <label>感性副标</label>
-        <textarea id="inSub" rows="2">每一个努力的瞬间，都值得被看见。</textarea>
+        <label>视觉关键词 (英文，如: Galaxy, Ocean, Forest)</label>
+        <input id="inKeyword" type="text" placeholder="输入意境词，系统将自动生图" value="stars">
     </div>
 
     <div class="group">
         <label>署名</label>
-        <input id="inAuthor" type="text" value="HOPE 学堂">
+        <input id="inAuthor" type="text" value="HOPE VISION">
     </div>
 
-    <button class="btn-gen" onclick="render()">即刻生成视觉</button>
+    <button class="btn-gen" onclick="updatePoster()">根据意境生图</button>
+    <p style="font-size: 11px; color: #999; margin-top: 15px;">* 输入关键词后点击按钮，背景图将实时匹配生成。</p>
 </div>
 
-<div class="stage">
+<div class="main">
     <div id="poster">
-        <button class="download-hint" onclick="save()">下载海报</button>
-        <canvas id="artCanvas"></canvas>
-        <div class="texture"></div>
+        <div class="img-bg" id="bgImg"></div>
+        <div class="overlay"></div>
+        <button class="save-btn" onclick="download()">保存海报</button>
         <div class="content">
-            <div class="main-title" id="outTitle"></div>
-            <div class="sub-title" id="outSub"></div>
+            <div class="title" id="outTitle"></div>
+            <div class="line"></div>
+            <div class="sub">每一个伟大的发现，都始于一次勇敢的仰望。</div>
             <div class="footer">
-                <div class="author-box">
-                    <div class="author-name" id="outAuthor"></div>
-                </div>
-                <div class="stamp">H.</div>
+                <div class="author" id="outAuthor"></div>
+                <div class="brand-icon">H</div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 调色盘
-    const palettes = [
-        ['#f3f4f6', '#2E84C5', '#111'], // 经典蓝
-        ['#ffffff', '#76B92E', '#222'], // 生机绿
-        ['#fff9e6', '#FFD100', '#333'], // 明亮黄
-        ['#fafafa', '#ff4d4d', '#000']  // 冲击红
-    ];
-
-    function render() {
+    function updatePoster() {
         const title = document.getElementById('inTitle').value;
-        const sub = document.getElementById('inSub').value;
+        const kw = document.getElementById('inKeyword').value || 'nature';
         const author = document.getElementById('inAuthor').value;
 
         document.getElementById('outTitle').innerText = title;
-        document.getElementById('outSub').innerText = sub;
         document.getElementById('outAuthor').innerText = author;
 
-        drawAbstractArt(title);
-    }
-
-    // 根据文案内容生成唯一的抽象背景
-    function drawAbstractArt(seedText) {
-        const canvas = document.getElementById('artCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 450;
-        canvas.height = 630;
-
-        // 简单的哈希算法确定样式
-        let hash = 0;
-        for (let i = 0; i < seedText.length; i++) {
-            hash = seedText.charCodeAt(i) + ((hash << 5) - hash);
-        }
-
-        const palette = palettes[Math.abs(hash) % palettes.length];
+        // 根据关键词从高质图库获取图片 (使用 Unsplash Source API)
+        const timestamp = new Date().getTime();
+        const imgUrl = `https://images.unsplash.com/photo-1500000000000?auto=format&fit=crop&w=800&q=80&sig=${timestamp}&keywords=${kw}`;
         
-        // 填充底色
-        ctx.fillStyle = palette[0];
-        ctx.fillRect(0, 0, 450, 630);
-
-        // 绘制抽象几何 (根据文案产生的Hash决定位置)
-        ctx.globalAlpha = 0.6;
-        ctx.fillStyle = palette[1];
+        const bgLayer = document.getElementById('bgImg');
+        bgLayer.style.backgroundImage = `url('${imgUrl}')`;
         
-        // 算法生成三个设计元素
-        for(let i=0; i<3; i++) {
-            const shift = (hash >> (i * 4)) & 0xFF;
-            ctx.beginPath();
-            if (shift % 3 === 0) {
-                // 绘制巨大的圆形切片
-                ctx.arc(shift, shift * 2, 200, 0, Math.PI * 2);
-            } else if (shift % 3 === 1) {
-                // 绘制倾斜的色块
-                ctx.rotate((shift * Math.PI) / 180);
-                ctx.rect(shift, 100, 300, 400);
-                ctx.resetTransform();
-            } else {
-                // 绘制极简线条
-                ctx.lineWidth = 40;
-                ctx.moveTo(0, shift * 2);
-                ctx.lineTo(450, shift * 1.5);
-                ctx.stroke();
-            }
-            ctx.fill();
-        }
-
-        // 增加白色柔光遮罩
-        const grad = ctx.createLinearGradient(0, 0, 0, 630);
-        grad.addColorStop(0, 'rgba(255,255,255,0.8)');
-        grad.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = grad;
-        ctx.globalAlpha = 1;
-        ctx.fillRect(0, 0, 450, 630);
-    }
-
-    function save() {
+        // 增加一点入场动画感
         const poster = document.getElementById('poster');
-        html2canvas(poster, { scale: 3 }).then(canvas => {
+        poster.style.transform = "rotateY(10deg) scale(0.95)";
+        setTimeout(() => {
+            poster.style.transform = "rotateY(0deg) scale(1)";
+        }, 300);
+    }
+
+    function download() {
+        const poster = document.getElementById('poster');
+        const btn = poster.querySelector('.save-btn');
+        btn.style.display = 'none';
+
+        html2canvas(poster, {
+            useCORS: true, 
+            scale: 2
+        }).then(canvas => {
             const link = document.createElement('a');
-            link.download = 'HOPE-AI-Design.png';
+            link.download = 'HOPE-AI-Poster.png';
             link.href = canvas.toDataURL();
             link.click();
+            btn.style.display = 'block';
         });
     }
 
-    window.onload = render;
+    window.onload = updatePoster;
 </script>
 
 </body>
